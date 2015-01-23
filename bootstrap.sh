@@ -18,6 +18,7 @@ case $(id -u) in
 		source /home/vagrant/.rvm/scripts/rvm
 		echo "export PATH=/home/vagrant/.rvm/scripts/rvm:$PATH" >> ~/.bashrc
 		export PATH=/home/vagrant/.rvm/scripts/rvm:$PATH
+	        echo "End of ROOT commands, calling script again as 'vagrant' user..."
 		sudo -u vagrant -i $0
 		;;
 	*)
@@ -88,16 +89,34 @@ case $(id -u) in
 		# Appium
 		##################################################################################################
 
-		# Clone Appium
-		git clone https://github.com/appium/appium.git
+		# # Clone Appium
+		APPIUM_DIR="$HOME/appium"
+                echo "Get Appium"
+		if [ -e "$APPIUM_DIR" ]; then
+		    echo "Appium directory exists, pulling possible updates"
+		    cd "$APPIUM_DIR"
+		    git pull
+		else 
+		    git clone https://github.com/appium/appium.git "$APPIUM_DIR"
+		fi
 
 		# Change to the appium directory
-		cd appium
+		cd "$APPIUM_DIR"
 
 		# Reset appium
 		# Running the reset.sh script doesn't seem to work correctly via the script.
 		# This could be fixed with some TLC.
-		#./reset.sh --android --verbose
+		echo "Reset Appium"
+		./reset.sh --android
+
+		##################################################################################################
+		# Copy node init script to /etc/init.d/
+		##################################################################################################
+		echo "Copying node init script to /etc/init.d/ and creating start symlink to it"
+		INIT_SCRIPT="/etc/init.d/node-service.sh"
+		sudo cp /vagrant/node-init.sh "$INIT_SCRIPT"
+		sudo chmod 775 "$INIT_SCRIPT" 
+		sudo update-rc.d node-init.sh defaults
 
 		##################################################################################################
 		# Launching VM 
@@ -116,15 +135,8 @@ case $(id -u) in
 		echo " > Please connect your device via USB"
 		echo " > \$ANDROID_HOME/platform-tools/adb devices"
 		echo "################################################################"
+		
 
-		##################################################################################################
-		# Next steps... 
-		##################################################################################################
-
-		echo "Manual steps:"
-		echo " > cd ~/appium"
-		echo " > ./reset.sh --android"
-		echo " > node ."
-
+		echo "End of vagrant user commands"
 		;;
 esac
