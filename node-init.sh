@@ -16,8 +16,8 @@ NAME=node
 
 do_start()
 {
-   echo "starting!";
-   sudo -u vagrant node /home/vagrant/appium 1>/tmp/node.log &
+   echo "starting Appium!";
+   sudo -u vagrant node /home/vagrant/npm/bin/appium 1>/tmp/node.log &
 }
 
 do_stop()

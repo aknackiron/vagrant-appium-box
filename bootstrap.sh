@@ -2,141 +2,153 @@
 
 case $(id -u) in
     0)
-		sudo apt-get update
-		sudo apt-get install unzip -y
-		sudo apt-get install python-software-properties -y
-		sudo apt-get install curl -y
-		curl -sL https://deb.nodesource.com/setup | sudo bash -
-		sudo apt-get install -y nodejs
-		sudo apt-get install git -y
-		sudo dpkg --add-architecture i386
-		sudo apt-get update
-		sudo apt-get install libncurses5:i386 libstdc++6:i386 zlib1g:i386 -y
-		sudo apt-get install openjdk-7-jdk -y
-		gpg --keyserver hkp://keys.gnupg.net --recv-keys D39DC0E3
-		curl -sSL https://get.rvm.io | bash -s stable --ruby
-		source /home/vagrant/.rvm/scripts/rvm
-		echo "export PATH=/home/vagrant/.rvm/scripts/rvm:$PATH" >> ~/.bashrc
-		export PATH=/home/vagrant/.rvm/scripts/rvm:$PATH
-	        echo "End of ROOT commands, calling script again as 'vagrant' user..."
-		sudo -u vagrant -i $0
-		;;
-	*)
-		## Ruby
-		gem install --no-rdoc --no-ri bundler
-		gem install --no-rdoc --no-ri appium_console
-		gem cleanup
-		
-		##################################################################################################
-		# Node
-		##################################################################################################
-		
-		# Enable npm to be used without sudo
-		npm config set prefix ~/npm
-		npm install -g grunt grunt-cli
-		# Add ~/npm/bin to the PATH variable
-		echo "export PATH=$HOME/npm/bin:$PATH" >> ~/.bashrc
-		export PATH=$HOME/npm/bin:$PATH
-		# Execute the .bashrc file
+	sudo apt-get update
+	sudo apt-get -y install unzip curl python-software-properties git apt-utils debconf-utils software-properties-common
+        # install nodejs
+	curl -sL https://deb.nodesource.com/setup_7.x | sudo bash -
+	sudo apt-get -y install nodejs
+        sudo add-apt-repository -y ppa:webupd8team/java
+        sudo apt-get update
+        echo "oracle-java8-installer shared/accepted-oracle-license-v1-1 select true" | sudo debconf-set-selections
+        sudo apt-get install -y oracle-java8-installer
 
-		##################################################################################################
-		# ADT
-		##################################################################################################
+        # gpg for RVM, installation done as normal user
+	gpg --keyserver hkp://keys.gnupg.net --recv-keys D39DC0E3
+	echo "End of ROOT commands, calling script again as 'vagrant' user..."
 
-		# Download ADT
-		curl -O https://dl.google.com/android/adt/adt-bundle-linux-x86_64-20140702.zip 
+        # continue this script as normal user
+	sudo -u vagrant -i $0
+	;;
+    *)
+        # @TODO why Ruby & RVM installation?
+        # finish RVM installation
+        curl -sSL https://get.rvm.io | bash -s stable --ruby
+	source /home/vagrant/.rvm/scripts/rvm
+	# echo "export PATH=/home/vagrant/.rvm/scripts/rvm:$PATH" >> ~/.bashrc
+	export "PATH=/home/vagrant/.rvm/scripts/rvm:$PATH"
+        
+	## Ruby
+	gem install --no-rdoc --no-ri bundler appium_console
+	gem cleanup
+	
+	##################################################################################################
+	# Node
+	##################################################################################################
+	
+	# Enable npm to be used without sudo & install appium with it
+	npm config set prefix ~/npm
+	npm install -g grunt grunt-cli appium appium-doctor
+        
+	# Add ~/npm/bin to the PATH variable
+	export "PATH=$HOME/npm/bin:$PATH"
+        
+	##################################################################################################
+	# ADT
+	##################################################################################################
 
-		# Extract ADT archive 
-		unzip adt-bundle-linux-x86_64-20140702.zip
+        TOOLS="tools_r25.2.3-linux"
+	# Download ADT
+        if [ -e "$TOOLS" ]; then
+            echo "Android Debug tools already downloaded"
+        else
+	    curl -O "https://dl.google.com/android/repository/$TOOLS.zip"
+	    # Extract ADT archive 
+	    unzip -q "$TOOLS.zip"
+	    # Define new ANDROID_HOME env var inside .bashrc
+	    #echo "export ANDROID_HOME=$HOME/tools" >> ~/.bashrc
+            export "ANDROID_HOME=$HOME/tools"
+            export "PATH=$PATH:$ANDROID_HOME:$ANDROID_HOME/bin"
+            
+            # ADB -- TODO: needs user interaction on first run!
+            yes | sdkmanager "tools"
+            yes | sdkmanager "platforms;android-25"
+            sdkmanager --update
 
-		# Define new ANDROID_HOME env var inside .bashrc
-		echo "export ANDROID_HOME=/home/vagrant/adt-bundle-linux-x86_64-20140702/sdk" >> ~/.bashrc
-		export ANDROID_HOME="/home/vagrant/adt-bundle-linux-x86_64-20140702/sdk"
-		# Add ~/npm/bin to the PATH variable               
-		echo "export PATH=$ANDROID_HOME/tools:$ANDROID_HOME/platform-tools:$PATH" >> ~/.bashrc
-		# Execute the .bashrc file
-		export PATH=$ANDROID_HOME/tools:$ANDROID_HOME/platform-tools:$PATH
-		#./android update sdk -u  
-		( sleep 5 && while [ 1 ]; do sleep 1; echo y; done ) | ~/adt-bundle-linux-x86_64-20140702/sdk/tools/android update sdk -u -a --filter tools,platform-tools,build-tools-21.1.1,android-19,sys-img-x86-android-19
-		
-		##################################################################################################
-		# Ant
-		##################################################################################################
+            # update PATH to include platform-tools dir with adb
+            export "PATH=$PATH:$HOME/platform-tools"
+        fi
 
-		# Download ant
-		curl -O http://mirror.gopotato.co.uk/apache//ant/binaries/apache-ant-1.9.4-bin.tar.gz    
+        # Update .bashrc with all env variables
+        echo "$PATH" >> ~/.bashrc
+        
+	##################################################################################################
+	# Ant - NOT NEEDED if not installing appium from source
+	##################################################################################################
 
-		# Extract ant
-		tar -zxvf apache-ant-1.9.4-bin.tar.gz 
+	# Download ant
+	# curl -O http://mirror.netinch.com/pub/apache//ant/binaries/apache-ant-1.10.1-bin.tar.gz
 
-		# Add ant/bin to the PATH variable
-		echo "export PATH=$HOME/apache-ant-1.9.4/bin:$PATH" >> ~/.bashrc
-		# Execute the .bashrc file
-		export PATH=$HOME/apache-ant-1.9.4/bin:$PATH
+	# # Extract ant
+	# tar -zxvf apache-ant-1.10.1-bin.tar.gz 
 
-		##################################################################################################
-		# Enable USB devices
-		##################################################################################################
+	# # Add ant/bin to the PATH variable
+	# echo "export PATH=$HOME/apache-ant-1.9.4/bin:$PATH" >> ~/.bashrc
+	# # Execute the .bashrc file
+	# export PATH=$HOME/apache-ant-1.9.4/bin:$PATH
 
-		# Samsung Galaxy
-		sudo cp /vagrant/android.rules /etc/udev/rules.d/51-android.rules
-		sudo chmod 644   /etc/udev/rules.d/51-android.rules
-		sudo chown root. /etc/udev/rules.d/51-android.rules
-		sudo service udev restart
-		sudo killall adb
-		
-		##################################################################################################
-		# Appium
-		##################################################################################################
+	##################################################################################################
+	# Enable USB devices
+	##################################################################################################
 
-		# # Clone Appium
-		APPIUM_DIR="$HOME/appium"
-                echo "Get Appium"
-		if [ -e "$APPIUM_DIR" ]; then
-		    echo "Appium directory exists, pulling possible updates"
-		    cd "$APPIUM_DIR"
-		    git pull
-		else 
-		    git clone https://github.com/appium/appium.git "$APPIUM_DIR"
-		fi
+	# Samsung Galaxy
+	sudo cp /vagrant/android.rules /etc/udev/rules.d/51-android.rules
+	sudo chmod 644   /etc/udev/rules.d/51-android.rules
+	sudo chown root. /etc/udev/rules.d/51-android.rules
+	sudo service udev restart
+	sudo killall adb
+	
+	##################################################################################################
+	# Appium - from source
+	##################################################################################################
+        # Install Appium from source
+	# # # Clone Appium
+	# APPIUM_DIR="$HOME/appium"
+        # echo "Get Appium"
+	# if [ -e "$APPIUM_DIR" ]; then
+	#     echo "Appium directory exists, pulling possible updates"
+	#     cd "$APPIUM_DIR"
+	#     git pull
+	# else 
+	#     git clone https://github.com/appium/appium.git "$APPIUM_DIR"
+	# fi
 
-		# Change to the appium directory
-		cd "$APPIUM_DIR"
+	# # Change to the appium directory
+	# cd "$APPIUM_DIR"
 
-		# Reset appium
-		# Running the reset.sh script doesn't seem to work correctly via the script.
-		# This could be fixed with some TLC.
-		echo "Reset Appium"
-		./reset.sh --android
+	# # Reset appium
+	# # Running the reset.sh script doesn't seem to work correctly via the script.
+	# # This could be fixed with some TLC.
+	# echo "Reset Appium"
+	# ./reset.sh --android
 
-		##################################################################################################
-		# Copy node init script to /etc/init.d/
-		##################################################################################################
-		echo "Copying node init script to /etc/init.d/ and creating start symlink to it"
-		INIT_SCRIPT="/etc/init.d/node-service.sh"
-		sudo cp /vagrant/node-init.sh "$INIT_SCRIPT"
-		sudo chmod 775 "$INIT_SCRIPT" 
-		sudo update-rc.d node-init.sh defaults
+	##################################################################################################
+	# Copy node init script to /etc/init.d/
+	##################################################################################################
+	echo "Copying node init script to /etc/init.d/ and creating start symlink to it"
+	INIT_SCRIPT="/etc/init.d/node-service.sh"
+	sudo cp /vagrant/node-init.sh "$INIT_SCRIPT"
+	sudo chmod 775 "$INIT_SCRIPT" 
+	sudo update-rc.d node-init.sh defaults
 
-		##################################################################################################
-		# Launching VM 
-		##################################################################################################
+	##################################################################################################
+	# Launching VM 
+	##################################################################################################
 
-		echo "################################################################"
-		echo "Bootstrap finished:"
-		echo " > Please run 'vagrant ssh' to launch VM"
-		echo "################################################################"
+	echo "################################################################"
+	echo "Bootstrap finished:"
+	echo " > Please run 'vagrant ssh' to launch VM"
+	echo "################################################################"
 
-		##################################################################################################
-		# Connecting USB devices 
-		##################################################################################################
+	##################################################################################################
+	# Connecting USB devices 
+	##################################################################################################
 
-		echo "USB Device setup:"
-		echo " > Please connect your device via USB"
-		echo " > \$ANDROID_HOME/platform-tools/adb devices"
-		echo "################################################################"
-		
+	echo "USB Device setup:"
+	echo " > Please connect your device via USB"
+	echo " > 'adb devices' "
+	echo "################################################################"
+	
 
-		echo "End of vagrant user commands"
-		;;
+	echo "End of vagrant user commands"
+	;;
 esac
